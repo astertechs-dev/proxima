@@ -1,0 +1,166 @@
+@startuml Proxima Infrastructure Architecture
+!define AWSPuml https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v15.0/dist
+!includeurl AWSPuml/AWSCommon.puml
+!includeurl AWSPuml/ApplicationIntegration/APIGateway.puml
+!includeurl AWSPuml/Compute/ECS.puml
+!includeurl AWSPuml/Compute/ECSService.puml
+!includeurl AWSPuml/Compute/ECSTask.puml
+!includeurl AWSPuml/Compute/ApplicationLoadBalancer.puml
+!includeurl AWSPuml/Database/RDS.puml
+!includeurl AWSPuml/Database/ElastiCache.puml
+!includeurl AWSPuml/Database/DocumentDB.puml
+!includeurl AWSPuml/Storage/S3.puml
+!includeurl AWSPuml/NetworkingContentDelivery/CloudFront.puml
+!includeurl AWSPuml/NetworkingContentDelivery/Route53.puml
+!includeurl AWSPuml/SecurityIdentityCompliance/CertificateManager.puml
+!includeurl AWSPuml/ManagementGovernance/CloudWatch.puml
+!includeurl AWSPuml/DeveloperTools/CodeBuild.puml
+!includeurl AWSPuml/DeveloperTools/CodePipeline.puml
+
+title Proxima - フリーランスITエンジニア・マッチングプラットフォーム\nインフラ構成図
+
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Noto Sans CJK JP"
+
+' Define colors
+!define PRIMARY_COLOR #2563EB
+!define SECONDARY_COLOR #10B981
+!define ACCENT_COLOR #F59E0B
+
+' User/Client
+actor "フリーランス\nエンジニア" as freelancer #lightblue
+actor "クライアント\n企業" as client #lightgreen
+actor "管理者" as admin #lightyellow
+
+' External Services
+cloud "GitHub" as github #black
+cloud "Stripe" as stripe #6772E5
+cloud "DocuSign" as docusign #FFB900
+cloud "Google Calendar" as gcal #4285F4
+
+' AWS Cloud
+package "AWS Cloud" {
+    ' DNS & CDN
+    Route53(route53, "Route 53", "DNS Management")
+    CloudFront(cloudfront, "CloudFront", "CDN")
+    CertificateManager(acm, "ACM", "SSL/TLS Certificates")
+    
+    ' Load Balancer
+    ApplicationLoadBalancer(alb, "Application\nLoad Balancer", "Traffic Distribution")
+    
+    ' API Gateway
+    APIGateway(apigateway, "API Gateway", "API Management\n& Rate Limiting")
+    
+    ' Container Services
+    package "ECS Cluster" {
+        ECS(ecs, "ECS Fargate", "Container Orchestration")
+        
+        package "Frontend Service" {
+            ECSService(frontend_service, "Frontend Service", "Next.js")
+            ECSTask(frontend_task, "Frontend Tasks", "React App")
+        }
+        
+        package "Backend Services" {
+            ECSService(user_service, "User Service", "Go/Gin")
+            ECSService(job_service, "Job Service", "Go/Gin")
+            ECSService(match_service, "Match Service", "Python/FastAPI")
+            ECSService(ai_service, "AI Service", "Python/FastAPI")
+        }
+    }
+    
+    ' Databases
+    package "Data Layer" {
+        RDS(postgres, "RDS PostgreSQL", "Main Database\n(Users, Jobs, Contracts)")
+        DocumentDB(mongodb, "DocumentDB", "Document Store\n(Skill Sheets, Portfolios)")
+        ElastiCache(redis, "ElastiCache Redis", "Cache & Sessions")
+    }
+    
+    ' Storage
+    S3(s3, "S3", "File Storage\n(Documents, Images)")
+    
+    ' Monitoring & Logging
+    CloudWatch(cloudwatch, "CloudWatch", "Monitoring & Logging")
+    
+    ' CI/CD
+    package "CI/CD Pipeline" {
+        CodePipeline(pipeline, "CodePipeline", "Deployment Pipeline")
+        CodeBuild(codebuild, "CodeBuild", "Build & Test")
+    }
+}
+
+' GitHub Actions (External CI/CD)
+cloud "GitHub Actions" as gh_actions #24292e
+
+' Connections - Users to Services
+freelancer --> route53 : "HTTPS"
+client --> route53 : "HTTPS"
+admin --> route53 : "HTTPS"
+
+' DNS & CDN Flow
+route53 --> cloudfront
+cloudfront --> alb
+acm --> cloudfront : "SSL Certificate"
+
+' Load Balancer to Services
+alb --> frontend_service : "Port 3000"
+alb --> apigateway : "Port 8080"
+
+' API Gateway to Backend Services
+apigateway --> user_service : "Port 8001"
+apigateway --> job_service : "Port 8002"
+apigateway --> match_service : "Port 8003"
+apigateway --> ai_service : "Port 8004"
+
+' Frontend to API Gateway
+frontend_task --> apigateway : "API Calls"
+
+' Backend Services to Databases
+user_service --> postgres : "User Data"
+user_service --> redis : "Sessions"
+job_service --> postgres : "Job Data"
+match_service --> mongodb : "Recommendations"
+match_service --> redis : "Cache"
+ai_service --> mongodb : "Skill Sheets"
+ai_service --> s3 : "File Storage"
+
+' External Integrations
+ai_service --> github : "Portfolio Sync"
+job_service --> stripe : "Payments"
+user_service --> docusign : "Contracts"
+user_service --> gcal : "Calendar Sync"
+
+' Monitoring
+ecs --> cloudwatch : "Logs & Metrics"
+postgres --> cloudwatch : "DB Metrics"
+mongodb --> cloudwatch : "DB Metrics"
+redis --> cloudwatch : "Cache Metrics"
+
+' CI/CD Flow
+gh_actions --> pipeline : "Trigger Deployment"
+pipeline --> codebuild : "Build Images"
+codebuild --> ecs : "Deploy Services"
+
+' Environment Separation
+note top of ecs
+  **環境分離**
+  • Development (Local Docker)
+  • Staging (ECS Fargate)
+  • Production (ECS Fargate)
+end note
+
+note bottom of postgres
+  **データベース構成**
+  • PostgreSQL: トランザクションデータ
+  • DocumentDB: 非構造化データ
+  • Redis: キャッシュ・セッション
+end note
+
+note right of apigateway
+  **API Gateway機能**
+  • レート制限
+  • 認証・認可
+  • リクエストルーティング
+  • ログ・監視
+end note
+
+@enduml
