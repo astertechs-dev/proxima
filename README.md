@@ -65,7 +65,7 @@ Proximaは、フリーランスITエンジニアとクライアント企業を�
 
 1. **リポジトリのクローン**
 ```bash
-git clone https://github.com/your-org/proxima.git
+git clone https://github.com/astertechs-dev/proxima.git
 cd proxima
 ```
 
@@ -242,7 +242,7 @@ docker-compose -f docker-compose.staging.yml up -d
 
 ## 📞 サポート
 
-- 技術的な質問: [GitHub Issues](https://github.com/your-org/proxima/issues)
+- 技術的な質問: [GitHub Issues](https://github.com/astertechs-dev/proxima/issues)
 - ドキュメント: [docs/](./docs/)
 - 要件定義書: [docs/requirements.md](./docs/requirements.md)
 - システム設計書: [docs/system-design.md](./docs/system-design.md)
